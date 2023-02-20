@@ -53,6 +53,7 @@ router.post(
           .json({ error: "Sorry! A user with this email already exists!" });
       }
 
+      //Salting and Hashing of passwords
       var salt = await bcrypt.genSalt(10);
       const secPass = await bcrypt.hash(req.body.password, salt);
 
@@ -62,16 +63,18 @@ router.post(
         password: secPass,
       });
 
-
+      //JWT Authentication
       const data = {
         user:{
           id:user.id
         }
       }
 
-      const jwtData = jwt.sign(data,JWT_SECRET);
+      const authtoken = jwt.sign(data,JWT_SECRET);
+      // console.log(authtoken);
+      // res.send(user); instead of user, we'll send authtoken 
 
-      res.send(user);
+      res.json({authtoken});
 
     } catch (error) {
       console.error(error.message);
