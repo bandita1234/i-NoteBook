@@ -4,6 +4,8 @@ const { body, validationResult } = require("express-validator");
 var bcrypt = require("bcryptjs");
 var jwt = require("jsonwebtoken");
 
+var fetchUser = require('../middleware/fetchUser');
+
 const User = require("../models/User");
 
 const JWT_SECRET = "hello.there.bandita.here";
@@ -146,5 +148,24 @@ router.post(
     }
   }
 );
+
+//ROUTE 3: GET LOGGEDIN USER DETAILS USING: POST './api/auth/getuser' ,  AUTHENTICATION(LOGIN) REQUIRED
+
+router.post("/getuser", fetchUser, async (req, res) => {
+
+  try {
+    const userId = req.user.id;
+    const user = await User.findById(userId).select("-password")
+    res.send(user);
+  } catch(error) {
+    //Same as before
+    console.error(error.message);
+    res.status(500).send("Internal server Error!");
+  }
+  //We have to docode the authtoken then get the user id.
+  //Create a middleware and pass it before async function here
+
+  //Then '.api/auth/getuser' apend authtoken in the header,then send the request
+});
 
 module.exports = router;
