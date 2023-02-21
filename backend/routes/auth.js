@@ -2,8 +2,7 @@ const express = require("express");
 const router = express.Router();
 const { body, validationResult } = require("express-validator");
 var bcrypt = require("bcryptjs");
-var jwt = require('jsonwebtoken');
-
+var jwt = require("jsonwebtoken");
 
 const User = require("../models/User");
 
@@ -17,7 +16,7 @@ const JWT_SECRET = "hello.there.bandita.here";
 // }
 // res.json(obj);
 
-//CREATE A USER USING: POST './api/auth/createuser' , NO AUTHENTICATION REQUIRED (So instead of get-> post)
+//ROUTE 1: CREATE A USER USING: POST './api/auth/createuser' , NO AUTHENTICATION(LOGIN) REQUIRED (So instead of get-> post)
 router.post(
   "/createuser",
   [
@@ -42,7 +41,7 @@ router.post(
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
-    
+
     //check whether the user with same email exists already
     try {
       let user = await User.findOne({ email: req.body.email }); //As this is a promise,we have to include await
@@ -65,20 +64,19 @@ router.post(
 
       //JWT Authentication
       const data = {
-        user:{
-          id:user.id
-        }
-      }
+        user: {
+          id: user.id,
+        },
+      };
 
-      const authtoken = jwt.sign(data,JWT_SECRET);
+      const authtoken = jwt.sign(data, JWT_SECRET);
       // console.log(authtoken);
-      // res.send(user); instead of user, we'll send authtoken 
+      // res.send(user); instead of user, we'll send authtoken
 
-      res.json({authtoken});
-
+      res.json({ authtoken });
     } catch (error) {
       console.error(error.message);
-      res.status(500).send("Some Error Occured!");
+      res.status(500).send("Internal server Error!");
     }
 
     //   .then((user) => res.json(user))
@@ -91,4 +89,62 @@ router.post(
     // res.send(req.body); //As we've already done res.json...so need to do this
   }
 );
+
+//ROUTE 2: AUTHENTICATE A USER USING: POST './api/auth/login' , NO AUTHENTICATION REQUIRED (So instead of get-> post)
+router.post(
+  "/login",
+  [
+    // email must be an valid email
+    body("email", "Enter a valid email").isEmail(),
+    // password can't be empty
+    body("password", "password can't be black").exists(),
+  ],
+
+  async (req, res) => {
+    //If there are any errors, return Bad request and the errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    //To get email and password from req.body and
+    const { email, password } = req.body;
+
+    try {
+      //Pull the user from the database whose email = entered email
+      let user = await User.findOne({ email });
+
+      //If the user does not exist
+      if (!user) {
+        return res
+          .status(400)
+          .json({ Error: "please enter a correct credentials! " });
+      }
+
+      //To compare the entered password with the existing password use .compare method
+      const passwordCompare = await bcrypt.compare(password, user.password);
+      //If password doesnot match
+      if (!passwordCompare) {
+        return res
+          .status(400)
+          .json({ Error: "please enter a correct credentials! " });
+      }
+
+      //If password is correct,Send the user data(id)
+      const data = {
+        user: {
+          id: user.id,
+        },
+      };
+      //Also, send the authtoken
+      const authtoken = jwt.sign(data, JWT_SECRET);
+      res.json({ authtoken });
+    } catch (error) {
+      //Same as before
+      console.error(error.message);
+      res.status(500).send("Internal server Error!");
+    }
+  }
+);
+
 module.exports = router;
